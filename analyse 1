@@ -1,9 +1,101 @@
+
 import numpy as np
-import sympy as sp
-import scipy.optimize as scp
-import scipy.stats as ss
-
 import matplotlib.pyplot as plt
-
+import scipy.optimize as scp
 from uncertainties import ufloat
 import uncertainties.umath as um
+import uncertainties.unumpy as unp
+
+
+plt.rc("axes", labelsize=14) # skriftstørrelsen på aksetitler
+plt.rc("xtick", labelsize=16, top=True, direction="in") # ticks større og i alle fire sider
+plt.rc("ytick", labelsize=16, right=True, direction="in") # ticks større og i alle fire sider
+plt.rc("axes", titlesize=20) # skriftstørrelse på plot-titler
+plt.rc("legend", fontsize=16) # skriftstørrelse af legend
+
+
+def loaddata(filnavn, sti=""):
+    x = []
+    y = []
+    t, u = np.loadtxt(sti+filnavn,dtype=float, delimiter='\t', skiprows=3, unpack=True)
+    #print(filnavn+" "+u[1]+" "+u[100])
+    for i in range(0,len(t),10):
+        xs = t
+        if u[i]==0:
+            continue
+        else:
+            x.append(t[i])
+            y.append(u[i])
+
+    
+    return [x,y]
+    
+    
+def avg(xdata,ydata,size):
+    xs, ys = [], []
+    
+    if len(xdata) != len(ydata):
+        raise Exception("lists of data must have same length") 
+        return
+    for i in range(0,len(ydata)-size,size):
+        ys.append(np.mean(ydata[i:i+size]))
+        xs.append(xdata[i+int(size/2)])
+    return xs,ys
+
+
+
+
+def dataplot(data, label="", xlim=None, ylim=None):
+    fig, ax = plt.subplots()
+    if ylim!=None:
+        ax.set_ylim(ylim)
+    if xlim!=None:
+        ax.set_xlim(xlim)
+    fig.patch.set_facecolor("w")
+    ax.set_ylabel("Spænding [mV]")
+    ax.set_xlabel("Tid [s]")
+    ax.plot(data[0],data[1],"b.",label=label,)
+    max = np.max(data[1])
+    ymax = np.ones(len(data[1]))*max
+    ax.plot(data[0],ymax,label="mean")
+    fig.text(.95,.2,"Middelværdi: "+str(max.round(1))+" mV",size=10)
+    ax.legend(bbox_to_anchor=(1.5,1))
+
+
+
+
+def plotset(span_size,interval,sti,name):
+    span = range(0,span_size,interval)
+    tmeans = []
+    rmeans = []
+    angles = []
+    fig, ax = plt.subplots()
+    for i in span:
+        try:
+            transdata = loaddata("trans"+str(i)+".txt", sti)[1]
+        except Exception as e:
+            print("\nfejl i trans ved vinkel "+str(i))
+            print(e)
+            transdata = [0]
+        try:
+            refdata = loaddata("ref"+str(i)+".txt", sti)[1]
+        except Exception as e:
+            print("\nfejl i ref ved vinkel "+str(i))
+            print(e)
+            refdata = [0]
+        tmean = np.mean(transdata)
+        rmean = np.mean(refdata)
+        tmeans.append(tmean)
+        rmeans.append(rmean)
+        angles.append(i)
+        ax.text(i+.6,tmean-tmean*.1,"[%i,%i]"%(i,tmean), color="maroon")
+        ax.text(i+.6,rmean+rmean*.1,"[%i,%i]"%(i,rmean),color="maroon")
+
+    fig.patch.set_facecolor("w")
+    ax.set_title(name)
+    ax.set_ylabel("Spænding [mV]")
+    ax.set_xlabel("Vinkel [grader]")
+    ax.plot(angles,tmeans,"x",label="transmitted")
+    ax.plot(angles,rmeans,"x",label="reflected")
+    ax.legend(bbox_to_anchor=(1.5,1))
+    
